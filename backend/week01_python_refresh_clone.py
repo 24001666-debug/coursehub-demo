@@ -82,9 +82,8 @@ test_cases = [
         ("Sinh vien khong ton tai", "99999999", "INT2204"),
     ]
 
-# for label, student_id, course_code in test_cases:
-#         print(label + ":", enroll_student(student_id, course_code))
+for label, student_id, course_code in test_cases:
+        print(label + ":", enroll_student(student_id, course_code))
 
-print("INT2204 enrolled:", find_course("INT2204")["enrolled"])
-# print("Enrollments:", enrollments)\
+print("Enrollments:", enrollments)
 
