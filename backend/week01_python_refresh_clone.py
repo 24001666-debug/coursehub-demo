@@ -72,9 +72,9 @@ def search_courses(keyword):
             results.append(course)
     return results
 
+# print(search_courses("We"))
 
-if __name__ == "__main__":
-    test_cases = [
+test_cases = [
         ("Dang ky thanh cong", "22000002", "INT2204"),
         ("Dang ky trung", "22000002", "INT2204"),
         ("Lop day", "22000001", "INT2205"),
@@ -82,8 +82,9 @@ if __name__ == "__main__":
         ("Sinh vien khong ton tai", "99999999", "INT2204"),
     ]
 
-    for label, student_id, course_code in test_cases:
-        print(label + ":", enroll_student(student_id, course_code))
+# for label, student_id, course_code in test_cases:
+#         print(label + ":", enroll_student(student_id, course_code))
 
-    print("INT2204 enrolled:", find_course("INT2204")["enrolled"])
-    print("Enrollments:", enrollments)
+print("INT2204 enrolled:", find_course("INT2204")["enrolled"])
+# print("Enrollments:", enrollments)\
+
