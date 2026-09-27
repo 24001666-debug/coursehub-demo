@@ -1,0 +1,89 @@
+# CourseHub - Buoi 1
+
+students = [
+    {"id": "22000001", "name": "Nguyen Minh Anh", "major": "KHDL"},
+    {"id": "22000002", "name": "Tran Duc Long", "major": "KHDL"},
+]
+courses = [
+    {
+        "code": "INT2204",
+        "name": "Co so du lieu Web va he thong thong tin",
+        "capacity": 3,
+        "enrolled": 2,
+    },
+    {
+        "code": "INT2205",
+        "name": "Khai pha du lieu",
+        "capacity": 2,
+        "enrolled": 2,
+    },
+]
+enrollments = [
+    {"student_id": "22000001", "course_code": "INT2204"}
+]
+
+
+def find_course(course_code):
+    for course in courses:
+        if course["code"] == course_code:
+            return course
+    return None
+
+
+def can_enroll(student_id, course_code):
+    course = find_course(course_code)
+    if course is None:
+        return False, "Hoc phan khong ton tai"
+
+    duplicated = any(
+        item["student_id"] == student_id
+        and item["course_code"] == course_code
+        for item in enrollments
+    )
+    if duplicated:
+        return False, "Sinh vien da dang ky hoc phan nay"
+    if course["enrolled"] >= course["capacity"]:
+        return False, "Lop da du so luong"
+    return True, "Co the dang ky"
+
+
+def enroll_student(student_id, course_code):
+    student_exists = any(student["id"] == student_id for student in students)
+    if not student_exists:
+        return False, "Sinh vien khong ton tai"
+
+    allowed, message = can_enroll(student_id, course_code)
+    if not allowed:
+        return False, message
+
+    course = find_course(course_code)
+    enrollments.append({"student_id": student_id, "course_code": course_code})
+    course["enrolled"] += 1
+    return True, "Dang ky thanh cong"
+
+
+def search_courses(keyword):
+    normalized = keyword.strip().lower()
+    results = []
+    for course in courses:
+        code = course["code"].lower()
+        name = course["name"].lower()
+        if normalized in code or normalized in name:
+            results.append(course)
+    return results
+
+
+if __name__ == "__main__":
+    test_cases = [
+        ("Dang ky thanh cong", "22000002", "INT2204"),
+        ("Dang ky trung", "22000002", "INT2204"),
+        ("Lop day", "22000001", "INT2205"),
+        ("Hoc phan khong ton tai", "22000002", "INT9999"),
+        ("Sinh vien khong ton tai", "99999999", "INT2204"),
+    ]
+
+    for label, student_id, course_code in test_cases:
+        print(label + ":", enroll_student(student_id, course_code))
+
+    print("INT2204 enrolled:", find_course("INT2204")["enrolled"])
+    print("Enrollments:", enrollments)
