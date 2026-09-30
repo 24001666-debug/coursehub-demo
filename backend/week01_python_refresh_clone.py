@@ -22,6 +22,9 @@ enrollments = [
     {"student_id": "22000001", "course_code": "INT2204"}
 ]
 
+for course in courses:
+    remaining = course["capacity"] - course["enrolled"]
+    print(course["code"], "- con", remaining, "cho")
 
 def find_course(course_code):
     for course in courses:
@@ -46,7 +49,25 @@ def can_enroll(student_id, course_code):
         return False, "Lop da du so luong"
     return True, "Co the dang ky"
 
+try:
+    limit = int(input("Nhap so luong hoc phan muon hien thi: "))
+    print(courses[:limit])
+except ValueError:
+    print("So luong phai la so nguyen")
 
+def search_courses(keyword):
+    normalized = keyword.strip().lower()
+    results = []
+    for course in courses:
+        code = course["code"].lower()
+        name = course["name"].lower()
+        if normalized in code or normalized in name:
+            results.append(course)
+    return results
+
+print(search_courses("INT"))
+
+# 1. Hàm đăng ký học phần
 def enroll_student(student_id, course_code):
     student_exists = any(student["id"] == student_id for student in students)
     if not student_exists:
@@ -61,19 +82,7 @@ def enroll_student(student_id, course_code):
     course["enrolled"] += 1
     return True, "Dang ky thanh cong"
 
-
-def search_courses(keyword):
-    normalized = keyword.strip().lower()
-    results = []
-    for course in courses:
-        code = course["code"].lower()
-        name = course["name"].lower()
-        if normalized in code or normalized in name:
-            results.append(course)
-    return results
-
-# print(search_courses("We"))
-
+# 2. 05 tình huống chạy thử:
 test_cases = [
         ("Dang ky thanh cong", "22000002", "INT2204"),
         ("Dang ky trung", "22000002", "INT2204"),
@@ -82,8 +91,8 @@ test_cases = [
         ("Sinh vien khong ton tai", "99999999", "INT2204"),
     ]
 
+# Ket qua quan sat
 for label, student_id, course_code in test_cases:
         print(label + ":", enroll_student(student_id, course_code))
 
-print("Enrollments:", enrollments)
 
