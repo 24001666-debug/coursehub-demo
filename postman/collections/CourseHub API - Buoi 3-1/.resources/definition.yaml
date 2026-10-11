@@ -1,0 +1,3 @@
+$kind: collection
+name: CourseHub API - Buoi 3
+description: Bo suu tap API kiem thu CourseHub Buoi 3 day du (FastAPI + PostgreSQL) bao gom ca cac bai tap tu thuc hanh
