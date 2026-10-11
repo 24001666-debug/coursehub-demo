@@ -9,4 +9,12 @@ class EnrollmentCreate(BaseModel):
         min_length=1,
         max_length=20,
         examples=["WEB-01"],
-)
+    )
+
+# Bai 3:
+class CapacityUpdate(BaseModel):
+    capacity: int = Field(
+        gt=0,
+        strict=True,
+        examples=[4],
+    )
