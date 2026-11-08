@@ -1,0 +1,15 @@
+# Bai 1 - week 4: request lay lich su dang ky khong co ket qua.
+$kind: http-request
+url: "{{base_url}}/enrollment-events?student_id=99999999&skip=0&limit=20"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("Status code la 200", () => {
+          pm.response.to.have.status(200);
+      });
+      pm.test("Khong co su kien phu hop", () => {
+          pm.expect(pm.response.json()).to.eql([]);
+      });
+    language: text/javascript
+order: 25000
