@@ -3,6 +3,10 @@ import { api } from "./api.js";
 import Notice from "./components/Notice.jsx";
 import SectionTable from "./components/SectionTable.jsx";
 import EnrollmentList from "./components/EnrollmentList.jsx";
+import StudentForm from "./components/StudentForm.jsx";
+import EnrollmentHistory from "./components/EnrollmentHistory.jsx";
+
+const SECTION_PAGE_SIZE = 10;
 
 export default function App() {
   const [draftId, setDraftId] = useState("22000004");
@@ -11,39 +15,42 @@ export default function App() {
   const [sections, setSections] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
   const [search, setSearch] = useState("");
+  const [courseCode, setCourseCode] = useState("");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [sectionPage, setSectionPage] = useState(0);
+  const [sectionsHasNext, setSectionsHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sectionsLoading, setSectionsLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [sectionsError, setSectionsError] = useState("");
   const [notice, setNotice] = useState({ kind: "info", text: "" });
   const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-    const options = { signal: controller.signal };
 
     async function loadData() {
       setLoading(true);
       setError("");
 
       try {
-        const [courseData, sectionData, enrollmentData] = await Promise.all([
-          api("/courses", options),
-          api("/sections", options),
-          api(`/students/${encodeURIComponent(studentId)}/enrollments`, options),
+        const [courseData, enrollmentData] = await Promise.all([
+          api("/courses?limit=100", { signal: controller.signal }),
+          api(`/students/${encodeURIComponent(studentId)}/enrollments`, {
+            signal: controller.signal,
+          }),
         ]);
 
         if (controller.signal.aborted) return;
 
         setCourses(courseData);
-        setSections(sectionData);
         setEnrollments(enrollmentData);
       } catch (err) {
         if (controller.signal.aborted) return;
 
         setError(err.message);
         setCourses([]);
-        setSections([]);
         setEnrollments([]);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -54,6 +61,43 @@ export default function App() {
 
     return () => controller.abort();
   }, [studentId, refresh]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      skip: String(sectionPage * SECTION_PAGE_SIZE),
+      limit: String(SECTION_PAGE_SIZE + 1),
+    });
+    const keyword = search.trim();
+    if (keyword) params.set("q", keyword);
+    if (courseCode) params.set("course_code", courseCode);
+    if (onlyAvailable) params.set("available_only", "true");
+
+    async function loadSections() {
+      setSectionsLoading(true);
+      setSectionsError("");
+
+      try {
+        const data = await api(`/sections?${params}`, {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+
+        setSections(data.slice(0, SECTION_PAGE_SIZE));
+        setSectionsHasNext(data.length > SECTION_PAGE_SIZE);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setSections([]);
+        setSectionsHasNext(false);
+        setSectionsError(err.message);
+      } finally {
+        if (!controller.signal.aborted) setSectionsLoading(false);
+      }
+    }
+
+    loadSections();
+    return () => controller.abort();
+  }, [courseCode, onlyAvailable, refresh, search, sectionPage]);
 
   function chooseStudent(event) {
     event.preventDefault();
@@ -66,6 +110,7 @@ export default function App() {
 
     setNotice({ kind: "info", text: "" });
     setLoading(true);
+    setSectionPage(0);
     setStudentId(nextId);
     setRefresh((value) => value + 1);
   }
@@ -106,27 +151,17 @@ export default function App() {
     }
   }
 
-  const keyword = search.trim().toLowerCase();
+  const rows = sections.map((section) => ({
+    ...section,
+    course_name:
+      courses.find((course) => course.code === section.course_code)?.name ??
+      section.course_code,
+    registered: enrollments.some(
+      (item) => item.class_section_id === section.class_id,
+    ),
+  }));
 
-  const rows = sections
-    .map((section) => ({
-      ...section,
-      course_name:
-        courses.find((course) => course.code === section.course_code)?.name ??
-        section.course_code,
-      registered: enrollments.some(
-        (item) => item.class_section_id === section.class_id,
-      ),
-    }))
-    .filter(
-      (row) =>
-        `${row.class_id} ${row.course_code} ${row.course_name}`
-          .toLowerCase()
-          .includes(keyword) &&
-        (!onlyAvailable || row.remaining > 0),
-    );
-
-  const disabled = loading || busy || Boolean(error);
+  const disabled = loading || sectionsLoading || busy || Boolean(error);
 
   return (
     <main className="container">
@@ -142,36 +177,15 @@ export default function App() {
         nhập.
       </p>
 
-      <section className="panel">
-        <h2>1. Chọn sinh viên</h2>
-        <form className="student-form" onSubmit={chooseStudent}>
-          <label htmlFor="student-id">Mã sinh viên</label>
-          <input
-            id="student-id"
-            value={draftId}
-            maxLength={8}
-            required
-            inputMode="numeric"
-            onChange={(e) => setDraftId(e.target.value)}
-            disabled={busy}
-          />
-          <button type="submit" disabled={busy}>
-            Xem đăng ký
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            disabled={busy || loading}
-            onClick={() => setRefresh((value) => value + 1)}
-          >
-            Tải lại dữ liệu
-          </button>
-        </form>
-        <p className="muted">
-          Dữ liệu đang xem: <strong>{studentId}</strong>. Mã mẫu:
-          22000001–22000004.
-        </p>
-      </section>
+      <StudentForm
+        draftId={draftId}
+        studentId={studentId}
+        busy={busy}
+        loading={loading}
+        onDraftChange={setDraftId}
+        onSubmit={chooseStudent}
+        onRefresh={() => setRefresh((value) => value + 1)}
+      />
 
       <Notice kind={notice.kind}>{notice.text}</Notice>
       <Notice kind="error">{error}</Notice>
@@ -186,23 +200,71 @@ export default function App() {
               <input
                 id="search"
                 value={search}
-                placeholder="Ví dụ: web"
-                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Ví dụ: WEB hoặc INT2204"
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setSectionPage(0);
+                }}
               />
+              {/* Bài 2 - Week 5: mã học phần được lấy từ GET /courses. */}
+              <label htmlFor="course-filter">Lọc theo học phần</label>
+              <select
+                id="course-filter"
+                value={courseCode}
+                onChange={(event) => {
+                  setCourseCode(event.target.value);
+                  setSectionPage(0);
+                }}
+              >
+                <option value="">Tất cả học phần</option>
+                {courses.map((course) => (
+                  <option key={course.code} value={course.code}>
+                    {course.code}
+                  </option>
+                ))}
+              </select>
               <label className="check">
                 <input
                   type="checkbox"
                   checked={onlyAvailable}
-                  onChange={(e) => setOnlyAvailable(e.target.checked)}
+                  onChange={(event) => {
+                    setOnlyAvailable(event.target.checked);
+                    setSectionPage(0);
+                  }}
                 />
                 Chỉ hiện lớp còn chỗ
               </label>
             </div>
-            <SectionTable
-              rows={rows}
-              disabled={disabled}
-              onEnroll={(id) => changeEnrollment(id)}
-            />
+            {sectionsLoading && <Notice>Đang tải lớp học phần...</Notice>}
+            {sectionsError && <Notice kind="error">{sectionsError}</Notice>}
+            {!sectionsLoading && !sectionsError && (
+              <>
+                <SectionTable
+                  rows={rows}
+                  disabled={disabled}
+                  onEnroll={(id) => changeEnrollment(id)}
+                />
+                <nav className="pagination" aria-label="Phân trang lớp học phần">
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={sectionPage === 0 || sectionsLoading}
+                    onClick={() => setSectionPage((value) => value - 1)}
+                  >
+                    Trang trước
+                  </button>
+                  <span>Trang {sectionPage + 1}</span>
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={!sectionsHasNext || sectionsLoading}
+                    onClick={() => setSectionPage((value) => value + 1)}
+                  >
+                    Trang sau
+                  </button>
+                </nav>
+              </>
+            )}
           </section>
 
           <section className="panel">
@@ -219,8 +281,13 @@ export default function App() {
         </div>
       )}
 
+      {!loading && !error && (
+        <EnrollmentHistory key={studentId} studentId={studentId} />
+      )}
+
       <footer>
-        Số chỗ và đăng ký được đọc từ API; Backend quyết định tính hợp lệ.
+        Bộ lọc và phân trang lớp học phần chạy ở máy chủ; API quyết định số chỗ
+        và tính hợp lệ của đăng ký.
       </footer>
     </main>
   );

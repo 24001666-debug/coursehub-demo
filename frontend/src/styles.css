@@ -88,7 +88,17 @@ input:not([type="checkbox"]) {
   min-width: 0;
 }
 
+select {
+  border: 1px solid #9dacbd;
+  border-radius: 7px;
+  padding: 9px 11px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
 input:focus,
+select:focus,
 button:focus-visible {
   outline: 3px solid #83b6e8;
   outline-offset: 2px;
@@ -151,6 +161,11 @@ button:disabled {
 .filters input:not([type="checkbox"]) {
   flex: 1;
   width: 150px;
+}
+
+.filters select {
+  flex: 1;
+  min-width: 160px;
 }
 
 .check {
@@ -234,6 +249,23 @@ small {
   background: #fff0ef;
   border-color: #e3aca6;
   color: #8e2820;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.pagination span {
+  color: #52667c;
+  font-size: 13px;
+}
+
+.history-content {
+  margin-top: 16px;
 }
 
 .enrollments {

@@ -9,6 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from .database import engine
 from .schemas import EnrollmentCreate, CapacityUpdate
 
+from fastapi.middleware.cors import CORSMiddleware
+
 logger = logging.getLogger(__name__)
 app = FastAPI(
     title="CourseHub API",
@@ -76,16 +78,45 @@ def get_course(course_code: str) -> dict[str, object]:
 @app.get("/sections")
 def list_sections(
     available_only: bool = False,
+    q: str | None = Query(default=None, min_length=1),
+    course_code: str | None = Query(default=None, min_length=1),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=10, ge=1, le=100),
 ) -> list[dict[str, object]]:
     sql = """
-        SELECT class_id, course_code, capacity, enrolled, remaining
-        FROM v_section_summary
+        SELECT section.class_id, section.course_code,
+               section.capacity, section.enrolled, section.remaining
+        FROM v_section_summary AS section
+        JOIN courses AS course ON course.code = section.course_code
     """
+    conditions: list[str] = []
+    parameters: dict[str, object] = {"skip": skip, "limit": limit}
+
     if available_only:
-        sql += " WHERE remaining > 0"
-    sql += " ORDER BY class_id"
+        conditions.append("section.remaining > 0")
+    if course_code is not None:
+        conditions.append("section.course_code = :course_code")
+        parameters["course_code"] = course_code.upper()
+    if q is not None:
+        keyword = q.strip().lower()
+        if not keyword:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tu khoa tim kiem khong duoc rong",
+            )
+        conditions.append(
+            "(LOWER(section.class_id) LIKE :keyword "
+            "OR LOWER(section.course_code) LIKE :keyword "
+            "OR LOWER(course.name) LIKE :keyword)"
+        )
+        parameters["keyword"] = f"%{keyword}%"
+
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    # Bài 4 - Week 5: phân trang ở PostgreSQL; class_id duy nhất bảo đảm thứ tự ổn định.
+    sql += " ORDER BY section.class_id LIMIT :limit OFFSET :skip"
     with engine.connect() as connection:
-        rows = connection.execute(text(sql)).mappings().all()
+        rows = connection.execute(text(sql), parameters).mappings().all()
     return [dict(row) for row in rows]
 @app.get("/students/{student_id}/enrollments")
 def list_student_enrollments(student_id: str) -> list[dict[str, object]]:
@@ -215,6 +246,10 @@ def create_enrollment(payload: EnrollmentCreate) -> dict[str, str]:
         "student_id": payload.student_id,
         "class_section_id": payload.class_section_id,
     }
+@app.delete(
+    "/enrollments/{student_id}/{class_section_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 def delete_enrollment(student_id: str, class_section_id: str) -> Response:
     lock_section_sql = """
         SELECT id
@@ -396,6 +431,7 @@ def list_enrollment_events(
         default=None,
         pattern="^(CREATED|CANCELLED)$",
     ),
+    dataset: str | None = Query(default=None, pattern="^(demo|performance)$"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
 ) -> list[dict[str, object]]:
@@ -408,6 +444,10 @@ def list_enrollment_events(
     if event_type is not None:
         conditions.append("event_type = :event_type")
         parameters["event_type"] = event_type
+    # Bài 3 - Week 5: giao diện chỉ yêu cầu dataset demo, không đọc dữ liệu performance.
+    if dataset is not None:
+        conditions.append("dataset = :dataset")
+        parameters["dataset"] = dataset
 
     sql = """
         SELECT id, student_id, class_section_id, event_type,
@@ -421,3 +461,12 @@ def list_enrollment_events(
     with engine.connect() as connection:
         rows = connection.execute(text(sql), parameters).mappings().all()
     return [dict(row) for row in rows]
+
+# Buoi 5: chi cho phep frontend local goi API qua trinh duyet.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type"],
+)
