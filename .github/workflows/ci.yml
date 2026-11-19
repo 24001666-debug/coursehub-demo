@@ -24,9 +24,12 @@ jobs:
         run: python -m compileall backend
       - name: Test backend
         run: python -m pytest backend/tests -q
-      # Week06 - Bài 4: tách kiểm tra API contract để CI chỉ rõ lỗi method/path.
-      # - name: Verify OpenAPI contract
-      #   run: python -m pytest backend/tests/test_openapi_contract.py -q
+        env:
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DB_NAME: coursehub_test
+          DB_USER: ci_user
+          DB_PASSWORD: ci_password
 
   frontend:
     runs-on: ubuntu-latest
