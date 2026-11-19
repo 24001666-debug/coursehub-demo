@@ -22,8 +22,11 @@ jobs:
         run: python -m pip install -r backend/requirements-dev.txt
       - name: Compile backend
         run: python -m compileall backend
-      - name: Test backend contract
-        run: python -m pytest backend/tests -q
+      - name: Test backend behavior
+        run: python -m pytest backend/tests -q --ignore=backend/tests/test_openapi_contract.py
+      # Week06 - Bài 4: tách kiểm tra API contract để CI chỉ rõ lỗi method/path.
+      - name: Verify OpenAPI contract
+        run: python -m pytest backend/tests/test_openapi_contract.py -q
 
   frontend:
     runs-on: ubuntu-latest

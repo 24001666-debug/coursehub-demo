@@ -22,3 +22,10 @@ def test_enrollment_methods_are_registered():
 
     assert "post" in paths["/enrollments"]
     assert "delete" in paths["/enrollments/{student_id}/{class_section_id}"]
+
+
+def test_sections_list_uses_get_method():
+    paths = app.openapi()["paths"]
+
+    # Week06 - Bài 1: /sections phải được đăng ký bằng GET.
+    assert "get" in paths["/sections"]

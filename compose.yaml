@@ -1,4 +1,5 @@
 services:
+  # Week06 - Bài 3: ghép API Backend với Frontend qua Compose.
   backend:
     build:
       context: .
@@ -22,6 +23,7 @@ services:
       retries: 12
       start_period: 5s
 
+  # Frontend gọi Backend qua proxy /api trong mạng Compose.
   frontend:
     build:
       context: .
